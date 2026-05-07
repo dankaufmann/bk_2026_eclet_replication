@@ -1,0 +1,6 @@
+
+ Spec. 	 1st Beta 	 F-stat 	 Crit. val. 	 
+ FFR 	 1.00 	 5.41 23.06 
+ IR3Mfed 	 1.00 	 16.32 23.06 
+ IR6Mfed 	 1.00 	 19.67 23.06 
+ IRSTfed 	 1.00 	 11.99 23.06 

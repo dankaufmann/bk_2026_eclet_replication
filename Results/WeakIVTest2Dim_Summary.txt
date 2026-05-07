@@ -1,0 +1,18 @@
+
+ Spec. 	 1st Beta 	 F-stat 	 Crit. val. 	 
+ FFR_IR2Yfed 	 0.00 	 1.00 26.98 28.35
+ FFR_IR3Yfed 	 -0.00 	 1.00 26.22 27.51
+ FFR_IR5Yfed 	 -0.00 	 1.00 27.86 26.88
+ FFR_IRMTfed 	 0.00 	 1.00 27.52 27.57
+ IR3Mfed_IR2Yfed 	 -0.00 	 1.00 17.62 28.47
+ IR3Mfed_IR3Yfed 	 -0.00 	 1.00 18.29 28.19
+ IR3Mfed_IR5Yfed 	 -0.00 	 1.00 21.25 27.61
+ IR3Mfed_IRMTfed 	 -0.00 	 1.00 19.77 28.02
+ IR6Mfed_IR2Yfed 	 0.00 	 1.00 22.07 28.71
+ IR6Mfed_IR3Yfed 	 0.00 	 1.00 21.97 28.67
+ IR6Mfed_IR5Yfed 	 0.00 	 1.00 19.86 27.57
+ IR6Mfed_IRMTfed 	 0.00 	 1.00 22.56 28.19
+ IRSTfed_IR2Yfed 	 -0.00 	 1.00 29.46 28.91
+ IRSTfed_IR3Yfed 	 -0.00 	 1.00 26.64 28.46
+ IRSTfed_IR5Yfed 	 0.00 	 1.00 26.43 27.25
+ IRSTfed_IRMTfed 	 0.00 	 1.00 28.13 28.28
