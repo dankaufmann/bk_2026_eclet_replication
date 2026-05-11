@@ -36,13 +36,10 @@ pkg load statistics
  Y       = Z*Pi+X*BY+v;
  y       = Y*beta+X*By+u;
 
-save -mat Data.mat CONST X Z Y y
 
 % Test for bias:
 
 output = gweakivtest(y,Y,X,Z,'NW')
-output_old = gweakivtest_old(y,Y,X,Z,'NW')
-
 
 % With Optional Inputs
 % alfa = 0.05;

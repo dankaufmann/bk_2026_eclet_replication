@@ -1,3 +1,6 @@
+Modification by Daniel Kaufmann, 11/05/2026: Files have been modified to run in Octave 8.x. Find the original files on https://karelmertens.com/research/
+
+
 Code for: `A Robust Test for Weak Instruments with Multiple Endogenous Regressors', by Daniel Lewis and Karel Mertens 
 This version 22/09/2024
 
