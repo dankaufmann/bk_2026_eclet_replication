@@ -4,7 +4,7 @@ Replication files — Version 11, May 2026
 
 Marc Burri and Daniel Kaufmann  
 University of Neuchâtel, Institute of Economic Research  
-*Economics Letters*, forthcoming
+*Economics Letters*, submitted
 
 ---
 
