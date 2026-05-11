@@ -1,6 +1,6 @@
 # Multiple monetary policy shocks from daily data: A heteroskedasticity IV approach
 
-Replication files — Version 2, May 2026
+Replication files — Version 11, May 2026
 
 Marc Burri and Daniel Kaufmann  
 University of Neuchâtel, Institute of Economic Research  
@@ -12,13 +12,12 @@ University of Neuchâtel, Institute of Economic Research
 
 This replication package reproduces all figures and tables in Burri and Kaufmann (2026). The paper proposes a heteroskedasticity-based instrumental variables (HET-IV) estimator that identifies two-dimensional monetary policy shocks — a target shock and a path shock — from daily financial market data, without requiring intraday tick data or precise announcement timestamps.
 
-All estimation routies are provided in the R package `hetiv`, which can be downloaded from: https://github.com/dankaufmann/hetiv
+All estimation routies are provided in the R package `hetiv`, which can be downloaded from: https://github.com/dankaufmann/hetiv. Full documentation of the package and an example application is available on: https://dankaufmann.github.io/hetiv/.
 
 The replication code is split across two scripts that must be run in order:
 
-1. `1_MultiDimShocks.R` — R script that estimates local projection models, produces IRF figures, and exports data for weak-instrument tests.
-2. `2_MultiDimWeakTests.m` — Octave/Matlab script that runs the Lewis and Mertens (2025) weak-instrument tests on the exported data.
-
+1. `1_MultiDimShocks.R` — R script that estimates local projection models, produces IRF figures, makes shock predictions, and conducts the weak instrument tests
+2. `2_MultiDimWeakTests.m` OPTIONAL Octave weak-instrument test script to verify the results using the original Lewis and Mertens (2025) codes. The codes have been modified to run in Octave. The results have been verified in Matlab 
 ---
 
 ## File structure
@@ -26,17 +25,17 @@ The replication code is split across two scripts that must be run in order:
 | Path | Description |
 |---|---|
 | `1_MultiDimShocks.R` | Main R replication script |
-| `2_MultiDimWeakTests.m` | Matlab/Octave weak-instrument test script |
+| `2_MultiDimWeakTests.m` | OPTIONAL Octave weak-instrument test script |
 | `DataRep/Data.RData` | Processed daily data (R format) |
 | `Functions/gweakivtest.m` | Lewis and Mertens (2025) weak-instrument test (Matlab/Octave) |
-| `Functions/gweakivtest_critical_values.m` | Critical value computation for Lewis-Mertens test |
+| `Functions/gweakivtest_critical_values.m` | Critical value computation for Lewis-Mertens test (Matlab/Octave) |
 | `Results/` | All output files (figures, tables, weak-instrument test results) |
 
 ---
 
 ## Data description
 
-All data come from Burri and Kaufmann (2024, IRENE Working Paper 24-03). The sample covers 1988-02-01 to 2022-12-31.
+All data come from Burri and Kaufmann (2026, IRENE Working Paper 24-03). The sample covers 1988-02-01 to 2022-12-31.
 
 ### Financial market variables
 
@@ -96,11 +95,13 @@ All other weekdays, excluding holidays, are used as control days.
 | `Results/PVals_HF_HET_Diff_1.pdf` | Bootstrap p-values, target shock | Online Appendix |
 | `Results/PVals_HF_HET_Diff_2.pdf` | Bootstrap p-values, path shock | Online Appendix |
 | `Results/CorrelationShocks2Dim.tex` | Shock correlation matrix | Online Appendix |
-| `Results/WeakIVTest1Dim_Summary.txt` | HET-IV 1D weak-instrument test | Table 1(a) |
-| `Results/WeakIVTest2Dim_Summary.txt` | HET-IV 2D weak-instrument test | Table 2(a) |
-| `Results/WeakIVTest1Dim_HF_Summary.txt` | HF-IV 1D weak-instrument test | Table 1(b) |
-| `Results/WeakIVTest2Dim_HF_Summary.txt` | HF-IV 2D weak-instrument test | Table 2(b) |
-| `Results/WeakIVTest2Dim_HFRec_Summary.txt` | HF-IV recursive 2D test | Not reported |
+| `Results/WeakIVTest_HET1Dim.txt` | HET-IV target shock, 1 dimension weak-instrument test | Table 1(a) |
+| `Results/WeakIVTest_HET2Dim.txt` | HET-IV path shock, 2 dimension weak-instrument test | Table 2(a) |
+| `Results/WeakIVTest_HF1Dim.txt` | HF-IV target shock, 1 dimension weak-instrument test | Table 1(b) |
+| `Results/WeakIVTest_HF12Dim.txt` | HF-IV path shock, 1 dimension weak-instrument test | Table 2(b) |
+| `Results/WeakIVTest_HF2Dim.txt` | HF-IV target and path shock, 2 dimension weak-instrument test | Not reported |
+|`WeakData2Dim_XXX.mat` | Matlab data files used by Octave/Matlab script to reproduce weak instrument tests using | Not reported |
+
 
 ---
 
@@ -115,7 +116,7 @@ hetiv, ggplot2, gridExtra, ivreg, sandwich, expm,
 xts, xtable, lmtest, tsbox, dplyr, matrixcalc, MASS, R.matlab, grid
 ```
 
-The R package `hetiv` can be downloaded from: https://github.com/dankaufmann/hetiv
+The R package `hetiv` can be downloaded from: https://github.com/dankaufmann/hetiv.
 
 ### Matlab / Octave (script `2_MultiDimWeakTests.m`)
 
@@ -132,8 +133,8 @@ The weak-instrument test functions (`gweakivtest.m`, `gweakivtest_critical_value
 install.packages("remotes")
 remotes::install_github("dankaufmann/hetiv")
 ```
-2. In R, set the working directory to `bk_2026_eclet_replication/`, and run `1_MultiDimShocks.R`. This produces all IRF figures and exports `.mat` files to `Results/`.
-3. Open Octave/Matlab, set the working directory to `bk_2026_eclet_replication/`, and run `2_MultiDimWeakTests.m`. This reads the `.mat` files and writes the weak-instrument test summaries to `Results/`.
+2. In R, set the working directory to `bk_2026_eclet_replication/`, and run `1_MultiDimShocks.R`. This produces all results. If desired, it also exports `.mat` files to `Results/`.
+3. Open Octave/Matlab, set the working directory to `bk_2026_eclet_replication/`, and run `2_MultiDimWeakTests.m`. This reads the `.mat` files and writes the weak-instrument test summaries using the original Lewis and Mertens (2025) code to `Results/`.
 
 The bootstrap in step 1 takes approximately 30–60 minutes for `B = 500` depending on hardware. Set to `B = 2000` for accurate results. Set `bootstrap = FALSE` to skip it.
 

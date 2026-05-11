@@ -25,7 +25,6 @@
 # remove.packages("hetiv")
 # install("C:\\Users\\daenu\\GitHub\\hetiv")
 
-
 # Load user-defined commands and packages
 library("hetiv")
 library("tsbox")
@@ -52,6 +51,9 @@ myEnd   <- "2022-12-31"
 # Choose whether do bootstrap tests (takes a while)
 bootstrap <- TRUE
 B <- 2000             # Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
+
+# Choose whether to export data for Lewis and Mertens (2025) test in Matlab
+exportMat <- FALSE
 
 # Baseline model specification
 P        <- 1                   # 1 lags as controls 
@@ -186,8 +188,10 @@ for(firstShock in firstShocks){
     
     # Write data for weak instrument test for heteroscedasticity-based instruments in matlab
     # Only for verification that hetiv function works
-    writeMat(con= paste0("./Results/WeakData2Dim_", firstShock, "_", secondShock, ".mat"), myTable = resLP$WeakData)
-    writeMat(con= paste0("./Results/WeakData2Dim_HF_", firstShock, "_", secondShock, ".mat"), myTable = resHF$WeakData)
+    if(exportMat == TRUE){
+      writeMat(con= paste0("./Results/WeakData2Dim_", firstShock, "_", secondShock, ".mat"), myTable = resLP$WeakData)
+      writeMat(con= paste0("./Results/WeakData2Dim_HF_", firstShock, "_", secondShock, ".mat"), myTable = resHF$WeakData)
+    }
   }
   
   # Note that we test for bias in the second coefficient, this is the one we are interested in
@@ -203,27 +207,27 @@ for(firstShock in firstShocks){
 # Export the weak instrument test results
 write.table(rbind(round(ResultsLP2[,,1], 2), NA,
                   round(ResultsLP2[,,2], 2)), 
-            "./Results/WeakIVTest_HET2DimR.txt", sep = "\t", 
+            "./Results/WeakIVTest_HET2Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
 write.table(rbind(round(ResultsLP1[,1], 2), NA,
                   round(ResultsLP1[,2], 2)), 
-            "./Results/WeakIVTest_HET1DimR.txt", sep = "\t", 
+            "./Results/WeakIVTest_HET1Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
 write.table(rbind(round(ResultsHF12[,1], 2), NA,
                   round(ResultsHF12[,2], 2)), 
-            "./Results/WeakIVTest_HF12DimR.txt", sep = "\t", 
+            "./Results/WeakIVTest_HF12Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
 write.table(rbind(round(ResultsHF1[,1], 2), NA,
                   round(ResultsHF1[,2], 2)), 
-            "./Results/WeakIVTest_HF1DimR.txt", sep = "\t", 
+            "./Results/WeakIVTest_HF1Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
 write.table(rbind(round(ResultsHF2[,,1], 2), NA,
                   round(ResultsHF2[,,2], 2)), 
-            "./Results/WeakIVTest_HF2DimR.txt", sep = "\t", 
+            "./Results/WeakIVTest_HF2Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
 #-------------------------------------------------------------------------------
