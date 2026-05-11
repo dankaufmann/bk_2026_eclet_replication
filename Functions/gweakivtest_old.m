@@ -1,15 +1,12 @@
 
 function output = gweakivtest(y,Y,X,Z,varargin)
 
-% Reference: Daniel Lewis and Karel Mertens,
-% A Robust Test for Weak Instruments with Multiple Endogenous Regressors
-% First version: 14/1/2022
-% This version: 22/9/2024
-% Major changes: added absolute bias criterion as default; relative bias as
-% option. Added tests for single coefficients.
+% Reference: Daniel Lewis and Karel Mertens, 
+% A Robust Test for Weak Instruments with Multiple Endogenous Regressors 
+% This version 14/10/2022
 
 %--------------------------------------------------------------------------
-% Model:
+% Model: 
 % y       = Y*beta+X*By+u;
 
 % Required Inputs
@@ -19,15 +16,12 @@ function output = gweakivtest(y,Y,X,Z,varargin)
 % X  : Exogenous Regressors (T x Nx)
 % Z  : Instrumental Variables (T x K)
 
-% Optional Inputs
+% Optional Inputs 
 %----------------
-% cov_type: HAR variance estimator, 'NW' or 'EHW', where 'NW': Newey West, 'EHW': Eicker-Huber-White, default is EHW
+% cov_type: HAR variance estimator, 'NW' or 'EHW', where 'NW': Newey West, 'EHW': Eicker-Huber-White, default is EHW  
 % alfa:     confidence level, default is 0.05
 % tau:      bias tolerance, default is 0.10
-% points:   number of starting points for the optimization step, default is 1000
-% target:   either 'beta' for entire vector or an integer j<=N corresponding to Y_j's position in beta
-% crit: bias criterion to use, either 'abs' or 'rel'; default is abs
-
+% points:   number of starting points for the optimization step, default is 1000 
 
 % Outputs:
 %---------
@@ -41,66 +35,48 @@ function output = gweakivtest(y,Y,X,Z,varargin)
 
 %--------------------------------------------------------------------------
 
-if nargin >4
+if nargin >4 
     if ~isempty(varargin{1})
         cov_type = varargin{1};
-    else
+    else 
         cov_type = [];
     end
-else
+else 
     cov_type = [];
 end
 
 if nargin >5
     if ~isempty(varargin{2})
-        alfa = varargin{2};
-    else
-        alfa = 0.05;
+        alfa = varargin{2}; 
+    else 
+        alfa = 0.05; 
     end
-else
-    alfa = 0.05;
+else 
+    alfa = 0.05; 
 end
 
 if nargin >6
     if ~isempty(varargin{3})
-        tau = varargin{3};
-    else
-        tau  = 0.10;
+        tau = varargin{3}; 
+    else 
+        tau  = 0.10; 
     end
-else
-    tau  = 0.10;
+else 
+    tau  = 0.10; 
 end
 
 if nargin >7
     if ~isempty(varargin{4})
-        points = varargin{4};
-    else
-        points = 1000;
+        points = varargin{4}; 
+    else 
+        points = 1000; 
     end
-else
-    points = 1000;
-end
-if nargin >8
-    if ~isempty(varargin{5})
-        target = varargin{5};
-    else
-        target = 'beta';
-    end
-else
-    target = 'beta';
-end
-if nargin >9
-    if ~isempty(varargin{6}) && strcmp(varargin{6},'rel')
-        crit = 'rel';
-    else
-        crit = 'abs';
-    end
-else
-    crit = 'abs';
+else 
+    points = 1000; 
 end
 
-
-% Force Dimensions
+ 
+% Force Dimensions 
 if size(y,1)<size(y,2); y=y'; end
 if size(Y,1)<size(Y,2); Y=Y'; end
 if size(Z,1)<size(Z,2); Z=Z'; end
@@ -126,9 +102,9 @@ end
 [~,N]  = size(Y);
 [~,K]  = size(Z);
 
-%
+% 
 Zo = Z - X*(X\Z);
-Zo = Zo-mean(Zo);
+Zo = Zo-mean(Zo); 
 Zo = Zo*(Zo'*Zo/T)^-0.5;
 Yo = Y - X*(X\Y);
 yo = y - X*(X\y);
@@ -142,7 +118,6 @@ v1 = yo-Pyo;
 v2 = Yo-PYo;
 
 ZV= repmat(Zo,1,N+1).*repelem([v1 v2] ,1,K);
-e = [v1 v2];
 
 if strcmp(cov_type,'NW')
     L=ceil(1.3*T^(1/2)); % Newey-West (1987) with truncation parameter recommended by Lazarus, Lewis, Stock, Watson (JBES 2018)
@@ -151,33 +126,22 @@ if strcmp(cov_type,'NW')
             acv(:,:,j+1)=ZV(j+1:end,:)'*ZV(1:end-j,:)/T + ZV(1:end-j,:)'*ZV(j+1:end,:)/T;
             w_l=1-j/(L);
             W=W+w_l*acv(:,:,j+1);
-
-            acve(:,:,j+1)=e(j+1:end,:)'*e(1:end-j,:)/T + e(1:end-j,:)'*e(j+1:end,:)/T;
-            Sig=Sig+w_l*acve(:,:,j+1);
         else
             acv(:,:,j+1)=ZV'*ZV/T;
             W=acv(:,:,j+1);
-
-            acve(:,:,j+1)=e'*e/T;
-            Sig=acve(:,:,j+1);
         end
     end
 else
     W=ZV'*ZV/T; % Eicker–Huber–White
-    Sig=e'*e/T;
 end
 
 W       = W*T/(T-K-Nx);
-Sig     = Sig*T/(T-K-Nx);
 
 RNK     = kron(eye(N),reshape(eye(K),K*K,1));
 W2      = W(K+1:end,K+1:end);
 Phi     = RNK'*kron(W2,eye(K))*RNK;
 gmin_generalized    = min(eig(Phi^-0.5*(PYo'*PYo)*Phi^-0.5));
-if strcmp(crit,'rel')
-    Sig=[];
-end
-[gmin_generalized_critical_value,gmin_generalized_critical_value_simplified,stock_yogo_critical_values_nagar] = gweakivtest_critical_values(W,K,Sig,alfa,tau,points,target,crit);
+[gmin_generalized_critical_value,gmin_generalized_critical_value_simplified,stock_yogo_critical_values_nagar] = gweakivtest_critical_values_old(W,K,alfa,tau,points);
 
 
 Svv     = v2'*v2/(T-K-Nx);
@@ -186,13 +150,7 @@ gmin_stock_yogo = min(eig((Svv^-.5*Yo'*Zo*(Zo'*Zo)^-1*Zo'*Yo*Svv^-.5)/K));
 
 output.nobs                                         = T;
 output.beta_2SLS                                    = betahat';
-if strcmp(target,'beta')
-    output.target='beta vector';
-else
-    output.target=strcat('beta_',num2str(target));
-end
 output.gmin_generalized                             = gmin_generalized;
-output.criterion                                    = crit;
 output.gmin_generalized_critical_value              = gmin_generalized_critical_value;
 output.gmin_generalized_critical_value_simplified   = gmin_generalized_critical_value_simplified;
 output.stock_yogo_test_statistic                    = gmin_stock_yogo;

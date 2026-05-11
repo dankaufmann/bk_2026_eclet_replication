@@ -1,50 +1,26 @@
-function [wiv_cv,wiv_cv_simplified,wiv_cv_sy,Bmax] = gweakivtest_critical_values(W,K,varargin)
+function [wiv_cv,wiv_cv_simplified,wiv_cv_sy,Bmax] = gweakivtest_critical_valuesLRR1(W,K,Sig,varargin)
 
 % Reference: Daniel Lewis and Karel Mertens,
 % A Robust Test for Weak Instruments with Multiple Endogenous Regressors
-% First version 13/6/2024
 % This version 22/09/2024
-% Major changes: added absolute bias criterion as default; relative bias as
-% option. Added tests for single coefficients. Added bounds to Imhof
-% approximation.
 
 % Note : The 'OptStiefelGBB' function is by Z. Wen and W. Yin, A feasible method for optimization with orthogonality constraints
 
 % Required:
-% W: (N+1)*K x (N+1)*K HAR covariance matrix of score z*(w, v)
-% K:        number of instruments
+% W: (N+1)*K x (N+1)*K HAR covariance matrix of score z*(w, v) in TRANSFORMED regression
+% K:        number of instruments in TRANSFORMED regression
+% Sig:      2 x 2 HAR covariance matrix of errors (w, v) in TRANSFORMED regression
 
 % Optional:
-% Sig:      (N+1) x (N+1) HAR covariance matrix of errors (w, v). Required with 'abs' criterion
 % alfa:     confidence level, default is 0.05
 % tau:      bias tolerance, default is 0.10
 % points:   number of starting points for the optimization step, default is 1000
 % target:   either 'beta' for entire vector or an integer j<=N corresponding to Y_j's position in beta
-% crit:     bias criterion to use, either 'abs' or 'rel'; default is abs.
-
-if nargin >7
-    if ~isempty(varargin{6})
-        crit = varargin{6};
-    else
-        crit = 'abs';
-    end
-else
-    crit = 'abs';
-end
-if nargin >2 && strcmp(crit,'abs')
-    if ~isempty(varargin{1})
-        Sig = varargin{1};
-    else
-        fprintf('Error: Error covariance matrix required for absolute bias test')
-    return
-    end
-elseif strcmp(crit,'abs')
-    fprintf('Error: Error covariance matrix required for absolute bias test')
-end
+% Sigv:     N x N HAR covariance matrix of errors (w, v) in ORIGINAL regression; required if target is not 'beta'
 
 if nargin >3
-    if ~isempty(varargin{2})
-        alfa = varargin{2};
+    if ~isempty(varargin{1})
+        alfa = varargin{1};
     else
         alfa = 0.05;
     end
@@ -53,8 +29,8 @@ else
 end
 
 if nargin >4
-    if ~isempty(varargin{3})
-        tau = varargin{3};
+    if ~isempty(varargin{2})
+        tau = varargin{2};
     else
         tau  = 0.10;
     end
@@ -63,8 +39,8 @@ else
 end
 
 if nargin >5
-    if ~isempty(varargin{4})
-        points = varargin{4};
+    if ~isempty(varargin{3})
+        points = varargin{3};
     else
         points = 1000;
     end
@@ -73,14 +49,27 @@ else
 end
 
 if nargin >6
-    if ~isempty(varargin{5})
-        target = varargin{5};
+    if ~isempty(varargin{4})
+        target = varargin{4};
     else
         target = 'beta';
     end
 else
     target = 'beta';
 end
+
+if nargin >7 && isnumeric(target)
+    if ~isempty(varargin{5})
+        Sigv = varargin{5};
+    else
+        fprintf('Error: Sigv required for single coefficient test')
+        return
+    end
+elseif isnumeric(target)
+    fprintf('Error: Sigv required for single coefficient test')
+    return
+end
+
 
 N      = length(W)/K-1; % Number of endogenous regressors;
 
@@ -94,6 +83,8 @@ opts.ftol = 1.e-7;
 %options_fmincon = optimoptions('fmincon','Display','off');
 %optimset('fmincon')
 options_fmincon = optimset('Display', 'off');
+
+
 
 % Construct some matrices
 RNK     = kron(eye(N),reshape(eye(K),K*K,1));
@@ -109,14 +100,7 @@ Phi=RNK'*kron(W2,eye(K))*RNK;
 S       = kron((Phi/K)^-0.5,eye(K))*W2^0.5;
 Sigma   = S*S';
 Psibar     = kron(kron((Phi/K)^-0.5,eye(K))*[W12;W2]',eye(K))*RNpK;
-if strcmp(crit, 'rel')
-    Psi     = Psibar*((RNpK'*kron(W,eye(K))*RNpK)^-0.5);
-elseif strcmp(crit, 'abs')
-    Psi     = Psibar*Sig^-.5*norm(Phi^-.5*Sig(2:end,2:end)^.5);
-else
-    fprintf('Error: bias criterion not specified or invalid')
-    return
-end
+Psi     = Psibar*Sig^-.5*norm(Phi^-.5*Sig(2:end,2:end)^.5);
 
 X1      = kron(kron(speye(N),spKgen(K^2,N)),speye(N^2))*kron(reshape(speye(N),N^2,1),speye(K^2*N^2))*kron(kron(speye(K),spKgen(K,N)),speye(N))*(speye(N^2*K^2)+spKgen(N*K,N*K));
 M2PsiM2 = M2*(Psi*Psi')*M2';
@@ -128,18 +112,11 @@ if K < N
     return
 end
 
-if N==1 && strcmp(crit,'rel')
-    if K>N+1
-        Bmax(2) = min(min((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi)),1);
-    else
-        Bmax(2) = min(max((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi)),1);
-    end
+
+if K>N+1
+    Bmax(2) = min((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
 else
-    if K>N+1
-        Bmax(2) = min((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
-    else
-        Bmax(2) = max((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
-    end
+    Bmax(2) = max((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
 end
 
 if K>N+1
@@ -171,10 +148,9 @@ if K==N
     end
 end
 
-% Rescale tau if necessary for single-coefficient test
-if isnumeric(target) && strcmp(crit,'abs')
-    iPhi=Phi^-.5;
-    tau=tau/(sqrt(Sig(target+1,target+1))*norm(iPhi(target,:)))*norm(iPhi*Sig(2:end,2:end)^.5);
+% Rescale tau for single-coefficient test
+if isnumeric(target)
+    tau=tau*(sqrt(Sig(2,2))/sqrt(Sigv(target,target)));
 end
 
 
@@ -209,21 +185,21 @@ for j = 1:3
         kt_cond = (kt_cond1>=0)&&(kt_cond2>=0)&&(kt_cond3>=0);
         warning on
         if kt_cond~=1 % If Kuhn-Tucker Conditions fail, find cumulants that maximize the critical value at alfa numerically
-                k_old = k;
-                if N>1
+            k_old = k;
+            if N>1
                 fun = @(x) -((chi2inv(1-alfa,8*x(2)*(x(2)/x(3))^2)-8*x(2)*(x(2)/x(3))^2)/4/(x(2)/x(3))+x(1));
                 [k,fval] = fmincon(fun,k,eye(3),k,[],[],.01*ones(3,1),[],[],options_fmincon);
                 ome  = k(2)/k(3);
                 nu   = 8*k(2)*ome^2;
-                else
+            else
                 fun = @(x) -((chi2inv(1-alfa,8*x(1)*(x(1)/x(2))^2)-8*x(1)*(x(1)/x(2))^2)/4/(x(1)/x(2))+k(1));
                 [knew,fval] = fmincon(fun,k(2:3),eye(2),k(2:3),[],[],.01*ones(2,1),[],[],options_fmincon);
                 ome  = knew(1)/knew(2);
                 nu   = 8*knew(1)*ome^2;
                 k(2:3)=knew;
-                end
-                cc  = chi2inv(1-alfa,nu);
             end
+            cc  = chi2inv(1-alfa,nu);
+        end
 
         cv(j)     = ((cc-nu)/4/ome+k(1))/K;
 

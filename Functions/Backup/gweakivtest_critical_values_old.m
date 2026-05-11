@@ -1,89 +1,19 @@
-function [wiv_cv,wiv_cv_simplified,wiv_cv_sy,Bmax] = gweakivtest_critical_values(W,K,varargin)
+function [wiv_cv,wiv_cv_simplified,wiv_cv_sy,Bmax] = gweakivtest_critical_values(W,K,alfa,tau,points)
 
 % Reference: Daniel Lewis and Karel Mertens,
 % A Robust Test for Weak Instruments with Multiple Endogenous Regressors
-% First version 13/6/2024
-% This version 22/09/2024
-% Major changes: added absolute bias criterion as default; relative bias as
-% option. Added tests for single coefficients. Added bounds to Imhof
-% approximation.
+% This version 10/19/2022
 
 % Note : The 'OptStiefelGBB' function is by Z. Wen and W. Yin, A feasible method for optimization with orthogonality constraints
 
-% Required:
-% W: (N+1)*K x (N+1)*K HAR covariance matrix of score z*(w, v)
-% K:        number of instruments
 
-% Optional:
-% Sig:      (N+1) x (N+1) HAR covariance matrix of errors (w, v). Required with 'abs' criterion
+% W: (N+1)*K x (N+1)*K HAR covariance matrix
+% K:        number of instruments
 % alfa:     confidence level, default is 0.05
 % tau:      bias tolerance, default is 0.10
 % points:   number of starting points for the optimization step, default is 1000
-% target:   either 'beta' for entire vector or an integer j<=N corresponding to Y_j's position in beta
-% crit:     bias criterion to use, either 'abs' or 'rel'; default is abs.
-
-if nargin >7
-    if ~isempty(varargin{6})
-        crit = varargin{6};
-    else
-        crit = 'abs';
-    end
-else
-    crit = 'abs';
-end
-if nargin >2 && strcmp(crit,'abs')
-    if ~isempty(varargin{1})
-        Sig = varargin{1};
-    else
-        fprintf('Error: Error covariance matrix required for absolute bias test')
-    return
-    end
-elseif strcmp(crit,'abs')
-    fprintf('Error: Error covariance matrix required for absolute bias test')
-end
-
-if nargin >3
-    if ~isempty(varargin{2})
-        alfa = varargin{2};
-    else
-        alfa = 0.05;
-    end
-else
-    alfa = 0.05;
-end
-
-if nargin >4
-    if ~isempty(varargin{3})
-        tau = varargin{3};
-    else
-        tau  = 0.10;
-    end
-else
-    tau  = 0.10;
-end
-
-if nargin >5
-    if ~isempty(varargin{4})
-        points = varargin{4};
-    else
-        points = 1000;
-    end
-else
-    points = 1000;
-end
-
-if nargin >6
-    if ~isempty(varargin{5})
-        target = varargin{5};
-    else
-        target = 'beta';
-    end
-else
-    target = 'beta';
-end
 
 N      = length(W)/K-1; % Number of endogenous regressors;
-
 
 % Optimization Settings
 opts.record = 0; %
@@ -92,8 +22,6 @@ opts.xtol = 1e-5;
 opts.gtol = 1e-5;
 opts.ftol = 1.e-7;
 %options_fmincon = optimoptions('fmincon','Display','off');
-%optimset('fmincon')
-options_fmincon = optimset('Display', 'off');
 
 % Construct some matrices
 RNK     = kron(eye(N),reshape(eye(K),K*K,1));
@@ -105,55 +33,49 @@ M2      = (RNK*RNK'/(1+N)-eye(N*K^2));
 W1      = W(1:K,1:K);
 W2      = W(K+1:end,K+1:end);
 W12     = W(1:K,K+1:end);
-Phi=RNK'*kron(W2,eye(K))*RNK;
-S       = kron((Phi/K)^-0.5,eye(K))*W2^0.5;
+S       = kron(((RNK'*kron(W2,eye(K))*RNK)/K)^-0.5,eye(K))*W2^0.5;
 Sigma   = S*S';
-Psibar     = kron(kron((Phi/K)^-0.5,eye(K))*[W12;W2]',eye(K))*RNpK;
-if strcmp(crit, 'rel')
-    Psi     = Psibar*((RNpK'*kron(W,eye(K))*RNpK)^-0.5);
-elseif strcmp(crit, 'abs')
-    Psi     = Psibar*Sig^-.5*norm(Phi^-.5*Sig(2:end,2:end)^.5);
-else
-    fprintf('Error: bias criterion not specified or invalid')
-    return
-end
+%Sigma = K*kron(((RNK'*kron(W2,eye(K))*RNK))^-0.5,eye(K))*W2*kron(((RNK'*kron(W2,eye(K))*RNK))^-0.5,eye(K));
+%Psi     = kron(S*W2^-0.5*[W12;W2]',eye(K))*RNpK*((RNpK'*kron(W,eye(K))*RNpK)^-0.5);
+Psi     = kron(kron(((RNK'*kron(W2,eye(K))*RNK)/K)^-0.5,eye(K))*[W12;W2]',eye(K))*RNpK*((RNpK'*kron(W,eye(K))*RNpK)^-0.5);
 
 X1      = kron(kron(speye(N),spKgen(K^2,N)),speye(N^2))*kron(reshape(speye(N),N^2,1),speye(K^2*N^2))*kron(kron(speye(K),spKgen(K,N)),speye(N))*(speye(N^2*K^2)+spKgen(N*K,N*K));
 M2PsiM2 = M2*(Psi*Psi')*M2';
 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if K < N
-    fprintf('Error: not identified')
+    printf('Error: not identified')
     return
 end
 
-if N==1 && strcmp(crit,'rel')
+if N==1
     if K>N+1
-        Bmax(2) = min(min((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi)),1);
+        Bmax(2) = min((2*(N+1)/K)^0.5*norm(M2*Psi),1);
     else
-        Bmax(2) = min(max((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi)),1);
+        Bmax(2) = min(norm(Psi),1);
     end
 else
     if K>N+1
         Bmax(2) = min((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
     else
-        Bmax(2) = max((2*(N+1)/K)^0.5*norm(M2*Psi),norm(Psi));
+        Bmax(2) = norm(Psi);
     end
 end
 
 if K>N+1
     % Sharp upper bound
     for iter = 1:points
-        [X,~]     = qr(randn(K,K));
-        L0        = X(:,1:N)';
-        [X, out1] = OptStiefelGBB(L0',@(x) objL0(x,M1,M2PsiM2,X1,N,K),opts);
-        %   L0(:,:,iter) = X';
-        Bmax_iters(iter) = sqrt(-out1.fval);
+    [X,~]     = qr(randn(K,K));
+    L0        = X(:,1:N)';
+    [X, out1] = OptStiefelGBB(L0',@(x) objL0(x,M1,M2PsiM2,X1,N,K),opts);
+ %   L0(:,:,iter) = X';
+    Bmax_iters(iter) = sqrt(-out1.fval);
     end
     Bmax(1) = max(Bmax_iters);
 else
-    Bmax(1) = Bmax(2);
+   Bmax(1) = Bmax(2);
 end
 
 % Stock-Yogo under Nagar Approximation
@@ -162,21 +84,6 @@ if K>N+1
 else
     Bmax(3) = NaN;
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Rescale tau if necessary for median bias
-if K==N
-    fprintf('Model is just-identified, test is for median bias')
-    if N==1
-        tau=tau/0.455; % sharper bound for median bias
-    end
-end
-
-% Rescale tau if necessary for single-coefficient test
-if isnumeric(target) && strcmp(crit,'abs')
-    iPhi=Phi^-.5;
-    tau=tau/(sqrt(Sig(target+1,target+1))*norm(iPhi(target,:)))*norm(iPhi*Sig(2:end,2:end)^.5);
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get critical value based on Imhof Approximation
@@ -191,41 +98,34 @@ for j = 1:3
         cc  = chi2inv(1-alfa,nu);
         % Check Kuhn-Tucker Conditions at the corner solution
         warning off
-        fun_phiz  = @(z) ome*(1+(z-k(1))/(2*k(2)*ome)).^(nu/2-1).*exp(-nu/2*(1+(z-k(1))/(2*k(2)*ome)))*nu.^(nu/2-1)/(2^(nu/2-2))/gamma(nu/2);
-        G1fun = @(q) -1/2*(q-2*nu*(nu-2)./q+nu) +3*nu/2*((log(q/2))-psi(0,nu/2));
-        G2fun = @(q)  1/2*(q-nu*(nu-2)./q)  -nu*((log(q/2))-psi(0,nu/2));
+            fun_phiz  = @(z) ome*(1+(z-k(1))/(2*k(2)*ome)).^(nu/2-1).*exp(-nu/2*(1+(z-k(1))/(2*k(2)*ome)))*nu.^(nu/2-1)/(2^(nu/2-2))/gamma(nu/2);
+            G1fun = @(q) -1/2*(q-2*nu*(nu-2)./q+nu) +3*nu/2*((log(q/2))-psi(0,nu/2));
+            G2fun = @(q)  1/2*(q-nu*(nu-2)./q)  -nu*((log(q/2))-psi(0,nu/2));
 
-        D1fun =  @(q) (1+(q-k(1))*2*ome)/(2*k(2)*ome).*(1+(q-k(1))/(2*k(2)*ome)).^(-1).*fun_phiz(q);
-        D2fun =  @(q) fun_phiz(q)/k(2).*G1fun(nu+(q-k(1))*4*ome);
-        D3fun =  @(q) G2fun(nu+(q-k(1))*4*ome)/k(3).*fun_phiz(q);
+            D1fun =  @(q) (1+(q-k(1))*2*ome)/(2*k(2)*ome).*(1+(q-k(1))/(2*k(2)*ome)).^(-1).*fun_phiz(q);
+            D2fun =  @(q) fun_phiz(q)/k(2).*G1fun(nu+(q-k(1))*4*ome);
+            D3fun =  @(q) G2fun(nu+(q-k(1))*4*ome)/k(3).*fun_phiz(q);
 
-        ID1fun= @(xx) integral(D1fun,xx,Inf);
-        ID2fun= @(xx) integral(D2fun,xx,Inf);
-        ID3fun= @(xx) integral(D3fun,xx,Inf);
+            ID1fun= @(xx) integral(D1fun,xx,Inf);
+            ID2fun= @(xx) integral(D2fun,xx,Inf);
+            ID3fun= @(xx) integral(D3fun,xx,Inf);
 
-        kt_cond1 = ID1fun(((cc-nu)/4/ome+k(1)));
-        kt_cond2 = ID2fun(((cc-nu)/4/ome+k(1)));
-        kt_cond3 = ID3fun(((cc-nu)/4/ome+k(1)));
-        kt_cond = (kt_cond1>=0)&&(kt_cond2>=0)&&(kt_cond3>=0);
-        warning on
-        if kt_cond~=1 % If Kuhn-Tucker Conditions fail, find cumulants that maximize the critical value at alfa numerically
+            kt_cond1 = ID1fun(((cc-nu)/4/ome+k(1)));
+            kt_cond2 = ID2fun(((cc-nu)/4/ome+k(1)));
+            kt_cond3 = ID3fun(((cc-nu)/4/ome+k(1)));
+            kt_cond = (kt_cond1>=0)&&(kt_cond2>=0)&&(kt_cond3>=0);
+         warning on
+            if kt_cond~=1 % If Kuhn-Tucker Conditions fail, find cumulants that maximize the critical value at alfa numerically
                 k_old = k;
-                if N>1
                 fun = @(x) -((chi2inv(1-alfa,8*x(2)*(x(2)/x(3))^2)-8*x(2)*(x(2)/x(3))^2)/4/(x(2)/x(3))+x(1));
-                [k,fval] = fmincon(fun,k,eye(3),k,[],[],.01*ones(3,1),[],[],options_fmincon);
+                [k,fval] = fmincon(fun,k,eye(3),k,[],[],[],[],[],options_fmincon);
+                [K N k-k_old]
                 ome  = k(2)/k(3);
                 nu   = 8*k(2)*ome^2;
-                else
-                fun = @(x) -((chi2inv(1-alfa,8*x(1)*(x(1)/x(2))^2)-8*x(1)*(x(1)/x(2))^2)/4/(x(1)/x(2))+k(1));
-                [knew,fval] = fmincon(fun,k(2:3),eye(2),k(2:3),[],[],.01*ones(2,1),[],[],options_fmincon);
-                ome  = knew(1)/knew(2);
-                nu   = 8*knew(1)*ome^2;
-                k(2:3)=knew;
-                end
                 cc  = chi2inv(1-alfa,nu);
             end
 
-        cv(j)     = ((cc-nu)/4/ome+k(1))/K;
+        cv(j) = ((cc-nu)/4/ome+k(1))/K;
 
     elseif j==3
         cv(j) = ncx2inv(1-alfa,K,K*lmin)/K;
@@ -235,6 +135,7 @@ end
 wiv_cv            = cv(1);
 wiv_cv_simplified = cv(2);
 wiv_cv_sy         = cv(3);
+
 end
 
 
@@ -419,7 +320,7 @@ end
 %% main iteration
 for itr = 1 : opts.mxitr
     XP = X;     FP = F;   GP = G;   dtXP = dtX;
-    % scale step size
+     % scale step size
 
     nls = 1; deriv = rhols*nrmG^2; %deriv
     while 1
@@ -487,7 +388,7 @@ for itr = 1 : opts.mxitr
     end
 
     Qp = Q; Q = gamma*Qp + 1; Cval = (gamma*Qp*Cval + F)/Q;
-end
+ end
 
 if itr >= opts.mxitr
     out.msg = 'exceed max iteration';
@@ -541,17 +442,17 @@ function Ahat = nearestSPD(A)
 %  Ahat - The matrix chosen as the nearest SPD matrix to A.
 
 if nargin ~= 1
-    error('Exactly one argument must be provided.')
+  error('Exactly one argument must be provided.')
 end
 
 % test for a square matrix A
 [r,c] = size(A);
 if r ~= c
-    error('A must be a square matrix.')
+  error('A must be a square matrix.')
 elseif (r == 1) && (A <= 0)
-    % A was scalar and non-positive, so just return eps
-    Ahat = eps;
-    return
+  % A was scalar and non-positive, so just return eps
+  Ahat = eps;
+  return
 end
 
 % symmetrize A into B
@@ -572,15 +473,15 @@ Ahat = (Ahat + Ahat')/2;
 p = 1;
 k = 0;
 while p ~= 0
-    [R,p] = chol(Ahat);
-    k = k + 1;
-    if p ~= 0
-        % Ahat failed the chol test. It must have been just a hair off,
-        % due to floating point trash, so it is simplest now just to
-        % tweak by adding a tiny multiple of an identity matrix.
-        mineig = min(eig(Ahat));
-        Ahat = Ahat + (-mineig*k.^2 + eps(mineig))*eye(size(A));
-    end
+  [R,p] = chol(Ahat);
+  k = k + 1;
+  if p ~= 0
+    % Ahat failed the chol test. It must have been just a hair off,
+    % due to floating point trash, so it is simplest now just to
+    % tweak by adding a tiny multiple of an identity matrix.
+    mineig = min(eig(Ahat));
+    Ahat = Ahat + (-mineig*k.^2 + eps(mineig))*eye(size(A));
+  end
 end
 
 

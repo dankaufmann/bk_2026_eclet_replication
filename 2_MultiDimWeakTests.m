@@ -36,10 +36,16 @@ pkg load statistics
 %--------------------------------------------------------------------------
 % Significance level and bias tolerance for Lewis-Mertens (2025) test
 % gmin_generalized statistic is compared against gmin_generalized_critical_value
+cov_type   = 'NW';
 alfa = 0.05;
-% tau  = 0.10;
-% points = 1000;
-% output = gweakivtest(y,Y,X,Z,'NW',alfa,tau,points)
+tau  = 0.10;
+points = 1000;
+target1 = 1;
+target2 = 2;
+crit = 'abs';
+code = 'old';   % old, new
+
+% output = gweakivtest(y,Y,X,Z,cov_type,alfa,tau,points,target,crit)
 
 %--------------------------------------------------------------------------
 % Section 1: HET-IV weak instrument tests
@@ -89,10 +95,15 @@ for i = 1:length(firstShock)
       % Variables for e = 2, without exogenous regressors
       Z1 = [myTable.Z1];
       Y1 = [myTable.y1];
-      y1 = myTable.y1;
+      y1 = myTable.y3;
 
       disp('Results e = 1');
-      resE1 = gweakivtest(y1,Y1,X,Z1,'NW', alfa)
+      if(strcmp(code, 'old'))
+        resE1 = gweakivtest_old(y1,Y1,X,Z1,cov_type,alfa,tau,points)
+      end
+      if(strcmp(code, 'new'))
+        resE1 = gweakivtest(y1,Y1,X,Z1,cov_type,alfa,tau,points,target1,crit)
+      end
 
       % Save results for later use
       myResultsE1.(myFile) = [resE1.beta_2SLS, resE1.gmin_generalized, resE1.gmin_generalized_critical_value];
@@ -102,11 +113,16 @@ for i = 1:length(firstShock)
     % Variables for e = 2, without exogenous regressors
     Z2 = [myTable.Z1, myTable.Z2];
     Y2 = [myTable.y1, myTable.y2];
-    y2 = myTable.y2;
+    y2 = myTable.y3;
 
     disp(myFile)
     disp('Results e = 2');
-    resE2 = gweakivtest(y2,Y2,X,Z2,'NW', alfa)
+    if(strcmp(code, 'old'))
+      resE2 = gweakivtest_old(y2,Y2,X,Z2,cov_type,alfa,tau,points)
+    end
+    if(strcmp(code, 'new'))
+      resE2 = gweakivtest(y2,Y2,X,Z2,cov_type,alfa,tau,points,target2,crit)
+    end
 
     % Save results for later use
     myResults.(myFile) = [resE2.beta_2SLS, resE2.gmin_generalized, resE2.gmin_generalized_critical_value];
@@ -187,10 +203,15 @@ for i = 1:length(firstShock)
       % Variables for e = 1, without exogenous regressors
       Z1 = [myTable.Z1];
       Y1 = [myTable.y1];
-      y1 = myTable.y1;
+      y1 = myTable.y3;
 
       disp('Results e = 1');
-      resE1 = gweakivtest(y1,Y1,X,Z1,'NW', alfa)
+      if(strcmp(code, 'old'))
+        resE1 = gweakivtest_old(y1,Y1,X,Z1,cov_type,alfa,tau,points)
+      end
+      if(strcmp(code, 'new'))
+        resE1 = gweakivtest(y1,Y1,X,Z1,cov_type,alfa,tau,points,target1,crit)
+      end
 
       % Save results for later use
       myResultsE1.(myFile) = [resE1.beta_2SLS, resE1.gmin_generalized, resE1.gmin_generalized_critical_value];
@@ -201,11 +222,17 @@ for i = 1:length(firstShock)
       % Variables for e = 2, without exogenous regressors
       Z2 = [myTable.Z2];
       Y2 = [myTable.y2];
-      y2 = myTable.y2;
+      y2 = myTable.y3;
 
       disp(myFile)
       disp('Results e = 2');
-      resE2 = gweakivtest(y2,Y2,X,Z2,'NW', alfa)
+
+      if(strcmp(code, 'old'))
+        resE2 = gweakivtest_old(y2,Y2,X,Z2,cov_type,alfa,tau,points)
+      end
+      if(strcmp(code, 'new'))
+        resE2 = gweakivtest(y2,Y2,X,Z2,cov_type,alfa,tau,points,target1,crit)
+      end
 
       % Save results for later use
       myResults.(myFile) = [resE2.beta_2SLS, resE2.gmin_generalized, resE2.gmin_generalized_critical_value];
@@ -214,11 +241,17 @@ for i = 1:length(firstShock)
       % Variables for e = 2, without exogenous regressors (recursive)
     Z2 = [myTable.Z1, myTable.Z2];
     Y2 = [myTable.y1, myTable.y2];
-    y2 = myTable.y2;
+    y2 = myTable.y3;
 
     disp(myFile)
     disp('Results e = 2');
-    resE2 = gweakivtest(y2,Y2,X,Z2,'NW', alfa)
+    if(strcmp(code, 'old'))
+     resE2 = gweakivtest_old(y2,Y2,X,Z2,cov_type,alfa,tau,points)
+    end
+    if(strcmp(code, 'new'))
+      resE2 = gweakivtest(y2,Y2,X,Z2,cov_type,alfa,tau,points,target2,crit)
+    end
+
 
     % Save results for later use
     myResultsRec.(myFile) = [resE2.beta_2SLS, resE2.gmin_generalized, resE2.gmin_generalized_critical_value];

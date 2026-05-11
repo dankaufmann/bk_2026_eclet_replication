@@ -1,12 +1,10 @@
 
-function output = gweakivtest(y,Y,X,Z,varargin)
+function output = gweakivtest_LRR1(y,Y,X,Z,ind,varargin)
 
 % Reference: Daniel Lewis and Karel Mertens,
 % A Robust Test for Weak Instruments with Multiple Endogenous Regressors
-% First version: 14/1/2022
-% This version: 22/9/2024
-% Major changes: added absolute bias criterion as default; relative bias as
-% option. Added tests for single coefficients.
+% First version 9/22/2024
+% This version 26/06/2025
 
 %--------------------------------------------------------------------------
 % Model:
@@ -18,6 +16,8 @@ function output = gweakivtest(y,Y,X,Z,varargin)
 % Y  : Endogenous Regressors (T x N)
 % X  : Exogenous Regressors (T x Nx)
 % Z  : Instrumental Variables (T x K)
+% ind: Integer less than or equal to N specifying retained regressor in
+% transformation
 
 % Optional Inputs
 %----------------
@@ -25,9 +25,8 @@ function output = gweakivtest(y,Y,X,Z,varargin)
 % alfa:     confidence level, default is 0.05
 % tau:      bias tolerance, default is 0.10
 % points:   number of starting points for the optimization step, default is 1000
-% target:   either 'beta' for entire vector or an integer j<=N corresponding to Y_j's position in beta
-% crit: bias criterion to use, either 'abs' or 'rel'; default is abs
-
+% target:   either 'beta' or equal to the integer input 'ind'. Default is
+% beta.
 
 % Outputs:
 %---------
@@ -36,12 +35,13 @@ function output = gweakivtest(y,Y,X,Z,varargin)
 % gmin_generalized: generalized test statistic
 % gmin_generalized_critical_value: critical value for gmin_generalized
 % gmin_generalized_simplified_critical_value: simplified critical value for gmin_generalized
-% stock_yogo_test_statistic: test statistic for the Stock Yogo (2005) test
+% stock_yogo_test_statistic: test statistic for the Stock Yogo (2005) test,
+% as in Sanderson and Windmeijer (2018)
 % stock_yogo_critical_value_nagar: critical value for stock_yogo_test_statistic based on the Nagar approximation (not the same as the value in the Stock Yogo tables which are based numerical integration)
 
 %--------------------------------------------------------------------------
 
-if nargin >4
+if nargin >5
     if ~isempty(varargin{1})
         cov_type = varargin{1};
     else
@@ -51,7 +51,7 @@ else
     cov_type = [];
 end
 
-if nargin >5
+if nargin >6
     if ~isempty(varargin{2})
         alfa = varargin{2};
     else
@@ -61,7 +61,7 @@ else
     alfa = 0.05;
 end
 
-if nargin >6
+if nargin >7
     if ~isempty(varargin{3})
         tau = varargin{3};
     else
@@ -71,7 +71,7 @@ else
     tau  = 0.10;
 end
 
-if nargin >7
+if nargin >8
     if ~isempty(varargin{4})
         points = varargin{4};
     else
@@ -80,23 +80,18 @@ if nargin >7
 else
     points = 1000;
 end
-if nargin >8
+if nargin >9
     if ~isempty(varargin{5})
         target = varargin{5};
+        if isnumeric(target) && target~=ind
+            fprintf('Error: Target coefficient ''target'' must be the same as retained regressor, ''ind''')
+            return
+        end
     else
         target = 'beta';
     end
 else
     target = 'beta';
-end
-if nargin >9
-    if ~isempty(varargin{6}) && strcmp(varargin{6},'rel')
-        crit = 'rel';
-    else
-        crit = 'abs';
-    end
-else
-    crit = 'abs';
 end
 
 
@@ -125,6 +120,7 @@ end
 [~,Nx] = size(X);
 [~,N]  = size(Y);
 [~,K]  = size(Z);
+nind=1:N; nind(ind)=[];
 
 %
 Zo = Z - X*(X\Z);
@@ -135,14 +131,25 @@ yo = y - X*(X\y);
 
 PYo = Zo*(Zo\Yo);
 Pyo = Zo*(Zo\yo);
-
 betahat = PYo\Pyo;
+what = yo-Pyo;
+vhat = Yo-PYo;
+ehat=[what vhat];
 
-v1 = yo-Pyo;
-v2 = Yo-PYo;
+dtilde=PYo(:,nind)\Yo(:,ind);
+Ystar=Yo(:,ind)-PYo(:,nind)*dtilde;
+ystar=yo(:,1)-PYo(:,nind)*(PYo(:,nind)\yo(:,1));
+Z2=Zo(:,N:end)-PYo(:,nind)*(PYo(:,nind)\Zo(:,N:end));
+shat=cov(vhat,1);
+dbar=[-dtilde(1:ind-1); 1; -dtilde(ind:end)];
+denom=dbar'*shat*dbar;
+gmin_stock_yogo=Ystar'*Z2*(Z2'*Z2)^-1*Z2'*Ystar/((K-N+1)*denom);
 
-ZV= repmat(Zo,1,N+1).*repelem([v1 v2] ,1,K);
-e = [v1 v2];
+Yhs=Z2*(Z2\Ystar);
+Z2=Z2*(Z2'*Z2/T)^-.5;
+estar=[what vhat(:,ind)-vhat(:,nind)*dtilde];
+Kstar=size(Z2,2);
+ZV= [repmat(Z2,1,2).*repelem(estar,1,Kstar)];
 
 if strcmp(cov_type,'NW')
     L=ceil(1.3*T^(1/2)); % Newey-West (1987) with truncation parameter recommended by Lazarus, Lewis, Stock, Watson (JBES 2018)
@@ -150,39 +157,31 @@ if strcmp(cov_type,'NW')
         if j>0
             acv(:,:,j+1)=ZV(j+1:end,:)'*ZV(1:end-j,:)/T + ZV(1:end-j,:)'*ZV(j+1:end,:)/T;
             w_l=1-j/(L);
-            W=W+w_l*acv(:,:,j+1);
-
-            acve(:,:,j+1)=e(j+1:end,:)'*e(1:end-j,:)/T + e(1:end-j,:)'*e(j+1:end,:)/T;
-            Sig=Sig+w_l*acve(:,:,j+1);
+            Wstar=Wstar+w_l*acv(:,:,j+1);
+            acvS(:,:,j+1)=estar(j+1:end,:)'*estar(1:end-j,:)/T + estar(1:end-j,:)'*estar(j+1:end,:)/T;            
+            Sstar=Sstar+w_l*acvS(:,:,j+1);
+            acvs(:,:,j+1)=vhat(j+1:end,:)'*vhat(1:end-j,:)/T + vhat(1:end-j,:)'*vhat(j+1:end,:)/T;
+            S_full=S_full+w_l*acvs(:,:,j+1);
         else
             acv(:,:,j+1)=ZV'*ZV/T;
-            W=acv(:,:,j+1);
-
-            acve(:,:,j+1)=e'*e/T;
-            Sig=acve(:,:,j+1);
+            Wstar=acv(:,:,j+1);
+            acvS(:,:,j+1)=estar'*estar/T;
+            Sstar=acvS(:,:,j+1);
+            acvs(:,:,j+1)=vhat'*vhat/T;
+            S_full=acvs(:,:,j+1);
         end
     end
 else
-    W=ZV'*ZV/T; % Eicker–Huber–White
-    Sig=e'*e/T;
+    Wstar=ZV'*ZV/T; % Eicker–Huber–White \
+    Sstar=estar'*estar/T;
+    S_full=vhat'*vhat/T;
 end
 
-W       = W*T/(T-K-Nx);
-Sig     = Sig*T/(T-K-Nx);
-
-RNK     = kron(eye(N),reshape(eye(K),K*K,1));
-W2      = W(K+1:end,K+1:end);
-Phi     = RNK'*kron(W2,eye(K))*RNK;
-gmin_generalized    = min(eig(Phi^-0.5*(PYo'*PYo)*Phi^-0.5));
-if strcmp(crit,'rel')
-    Sig=[];
-end
-[gmin_generalized_critical_value,gmin_generalized_critical_value_simplified,stock_yogo_critical_values_nagar] = gweakivtest_critical_values(W,K,Sig,alfa,tau,points,target,crit);
-
-
-Svv     = v2'*v2/(T-K-Nx);
-gmin_stock_yogo = min(eig((Svv^-.5*Yo'*Zo*(Zo'*Zo)^-1*Zo'*Yo*Svv^-.5)/K));
-
+Wstar       = Wstar*T/(T-K-Nx);
+Sstar   = Sstar*T/(T-K-Nx);
+Phi=trace(Wstar(Kstar+1:end,Kstar+1:end));
+gmin_generalized=Yhs'*Yhs/Phi;
+[gmin_generalized_critical_value,gmin_generalized_critical_value_simplified,stock_yogo_critical_values_nagar] = gweakivtest_critical_valuesLRR1(Wstar,Kstar,Sstar,alfa,tau,points,target,S_full);
 
 output.nobs                                         = T;
 output.beta_2SLS                                    = betahat';
@@ -192,8 +191,9 @@ else
     output.target=strcat('beta_',num2str(target));
 end
 output.gmin_generalized                             = gmin_generalized;
-output.criterion                                    = crit;
+output.criterion                                    = 'abs';
 output.gmin_generalized_critical_value              = gmin_generalized_critical_value;
 output.gmin_generalized_critical_value_simplified   = gmin_generalized_critical_value_simplified;
-output.stock_yogo_test_statistic                    = gmin_stock_yogo;
-output.stock_yogo_critical_value_nagar              = stock_yogo_critical_values_nagar;
+output.sanderson_windmeijer_test_statistic          = gmin_stock_yogo;
+output.sanderson_windmeijer_critical_value_nagar    = stock_yogo_critical_values_nagar;
+

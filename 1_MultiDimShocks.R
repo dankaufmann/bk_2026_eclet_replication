@@ -19,11 +19,14 @@
 # Run order: this script first, then 2_MultiDimWeakTests.m (Matlab/Octave)
 #-------------------------------------------------------------------------------
 
+# In the first instance, install the package iv from github repository
+# install.packages("devtools")
+# library(devtools)
+# remove.packages("hetiv")
+# install("C:\\Users\\daenu\\GitHub\\hetiv")
+
+
 # Load user-defined commands and packages
-#install.packages("devtools")
-#library(devtools)
-#remove.packages("hetiv")
-#install("C:\\Users\\daenu\\GitHub\\hetiv")
 library("hetiv")
 library("tsbox")
 library("xts")
@@ -33,20 +36,6 @@ library("gridExtra")
 library("ggplot2")
 library("dplyr")
 library("xtable")
-
-# source("./Functions/IdentificationFunctions.R")
-# library("MultiRNG")
-# library("ivreg")
-# library("sandwich")
-# library("lubridate")
-# library("xts")
-# library("xtable")
-# library("lmtest")
-# library("tsbox")
-# library("dplyr")
-# library("matrixcalc")
-# library("MASS")
-
 
 #-------------------------------------------------------------------------------
 # 0) Load daily data
@@ -60,18 +49,13 @@ load("./DataRep/Data.RData")
 myStart <- "1988-02-01"
 myEnd   <- "2022-12-31"
 
-# Tolerance for SVD truncation of inverse in Kalman-filter prediction step
-# Set to NA for default values of Moore-Penrose inverse
-tolInv = NA
-
 # Choose whether do bootstrap tests (takes a while)
-bootstrap = TRUE
-B = 20             # Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
+bootstrap <- TRUE
+B <- 2000             # Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
 
 # Baseline model specification
 P        <- 1                   # 1 lags as controls 
 E        <- 2                   # 2 dimensional shock
-depVar   <- c("IRLTfed", "NEER", "Stocks")  # Variables used to extract shocks and compute the IRFs (Y)
 conVar   <- c("IRSTfed", "IRMTfed", "NEER", "Stocks",  "Spread", "TRSkew")   # Control variables included with up to P lags (X)
 
 # IRF graph settings
@@ -83,7 +67,6 @@ H          <- 21    # Number of periods for IRF horizon (should be multiple of H
 figScaleW  <- 2.2   # Figure width scaling factor (per column)
 figScaleH  <- 2.6   # Figure height scaling factor (per row)
 
-shockLabs <- c()             # Empty vector, shocks are labeled in the plot functions
 xLab      <- "Working days"  # X-axis label for IRF graphs
 varLabs   <- data.frame(IRSTfed = "Short-term rate (in pp)",IRMTfed = "Medium-term rate (in pp)", IRLTfed = "Long-term rate (in pp)",
                         IR1Yfed = "1Y rate (in pp)", IR2Yfed = "2Y rate (in pp)", IR3Yfed = "3Y rate (in pp)", IR5Yfed = "5Y rate (in pp)", 
@@ -99,14 +82,33 @@ varLabs   <- data.frame(IRSTfed = "Short-term rate (in pp)",IRMTfed = "Medium-te
 # - Use a selection of short-term interest rates for first shock
 # - Exports WeakData*.mat files used by 2_MultiDimWeakTests.m
 #-------------------------------------------------------------------------------
-depVar1  <- c("NEER")           # Only needed so that N > 1, also act as dummy control vars
+depVar1  <- c("IRLTfed")        # Only needed so that N > 1, also act as dummy control vars
 N        <- 3                   # Number of dependent variables (only for weak instrument tests)
 
+firstShocks  <- c("FFR", "IR3Mfed", "IR6Mfed", "IRSTfed")
+secondShocks <- c("IR2Yfed", "IR3Yfed", "IR5Yfed", "IRMTfed")
+
+# Store results for HF-IV and HET-IV first and second shock combinations (weak instrument test stat and crit. values)
+ResultsHF2  <- array(NA, dim = c(4, 4, 2)) 
+rownames(ResultsHF2) <- firstShocks
+colnames(ResultsHF2) <- secondShocks
+ResultsLP2 <- ResultsHF2 
+
+# Arrays for one-dimensional shock tests
+ResultsHF1  <- ResultsHF2[, 1, ]
+ResultsLP1  <- ResultsLP2[, 1, ]
+ResultsHF12 <- ResultsHF2[1, , ]
+
+# Settings
+cov_type = "NW"
+crit     = "abs"
+points   = 1000
+
 # First shock try short-term interest rates
-for(firstShock in c("FFR", "IR3Mfed", "IR6Mfed", "IRSTfed")){
+for(firstShock in firstShocks){
   
   # Second shock try medium- and long-term interest rates
-  for(secondShock in c("IR2Yfed", "IR3Yfed", "IR5Yfed", "IRMTfed")){
+  for(secondShock in secondShocks){
     
     irfVars  <- c(firstShock, secondShock, depVar1)
     irfVars  <- unique(irfVars[irfVars != ""])
@@ -123,10 +125,10 @@ for(firstShock in c("FFR", "IR3Mfed", "IR6Mfed", "IRSTfed")){
     
     # Shorten to sample period 
     Dt   <- index(ts_span(y, myStart, myEnd))
-    y    <- data.frame(ts_span(y, myStart, myEnd))
-    O    <- data.frame(ts_span(O, myStart, myEnd))
-    Ind  <- data.frame(ts_span(IndE, myStart, myEnd))
-    Z    <- data.frame(ts_span(Z, myStart, myEnd))
+    y    <- as.matrix(ts_span(y, myStart, myEnd))
+    O    <- as.matrix(ts_span(O, myStart, myEnd))
+    Ind  <- as.matrix(ts_span(IndE, myStart, myEnd))
+    Z    <- as.matrix(ts_span(Z, myStart, myEnd))
     
     # Estimate the impact matrix (H = 1)
     resLP <- hetiv(y =         y[, 1:N], 
@@ -146,12 +148,83 @@ for(firstShock in c("FFR", "IR3Mfed", "IR6Mfed", "IRSTfed")){
                    H =         1,
                    details =   TRUE)
     
-    # Write data for weak instrument test for heteroscedasticity-based instruments
+    # Get data for weak instrument test HET-IV
+    weakdataLP <- resLP$WeakData
+    # y: outcome variable E+1 (not used as endogenous regressor)
+    yLP <- weakdataLP[, paste0("y", E+1)]
+    # Y: first E outcome variables (endogenous regressors)
+    YLP <- weakdataLP[, paste0("y", 1:E)]
+    # Z: the E instruments
+    ZLP <- weakdataLP[, paste0("Z", 1:E),]
+    # X: lagged ("o*") and deterministic ("x*") control columns. In any case, add a constant term as well.
+    # Note that gweaktest() adds a constant term if missing
+    ctrl  <- startsWith(colnames(weakdataLP), "o") | startsWith(colnames(weakdataLP), "x")| startsWith(colnames(weakdataLP), "i")
+    XLP     <- if (any(ctrl)) cbind(weakdataLP[, ctrl], matrix(1, nrow(weakdataLP), 1)) else matrix(numeric(0), nrow(weakdataLP), 0)
+    
+    # Get data for weak instrument test HF-IV
+    weakdataHF <- resHF$WeakData
+    # y: outcome variable E+1 (not used as endogenous regressor)
+    yHF <- weakdataHF[, paste0("y", E+1)]
+    # Y: first E outcome variables (endogenous regressors)
+    YHF <- weakdataHF[, paste0("y", 1:E)]
+    # Z: the E instruments
+    ZHF <- weakdataHF[, paste0("Z", 1:E),]
+    # X: lagged ("o*") and deterministic ("x*") control columns. In any case, add a constant term as well.
+    # Note that gweaktest() adds a constant term if missing
+    ctrl  <- startsWith(colnames(weakdataHF), "o") | startsWith(colnames(weakdataHF), "x") | startsWith(colnames(weakdataHF), "i")
+    XHF     <- if (any(ctrl)) cbind(weakdataHF[, ctrl], matrix(1, nrow(weakdataHF), 1)) else matrix(numeric(0), nrow(weakdataHF), 0)
+    
+    # Note that we test for bias in the second coefficient, this is the one we are interested in
+    weaktestLP2  <- gweakivtest(yLP, YLP, XLP, ZLP, target = 2, cov_type = cov_type, crit = crit, points = points)
+    weaktestHF2  <- gweakivtest(yHF, YHF, XHF, ZHF, target = 2, cov_type = cov_type, crit = crit, points = points)
+    weaktestHF12 <- gweakivtest(yHF, YHF[, 2], XHF, ZHF[, 2], target = 1, cov_type = cov_type, crit = crit, points = points)
+    
+    # Save weaktest results (two-dimensional shocks and one-dimensional path shock HF)
+    ResultsLP2[firstShock, secondShock, ]  <- c(weaktestLP2$gmin_generalized, weaktestLP2$gmin_generalized_critical_value)
+    ResultsHF2[firstShock, secondShock, ]  <- c(weaktestHF2$gmin_generalized, weaktestHF2$gmin_generalized_critical_value)
+    ResultsHF12[secondShock, ]             <- c(weaktestHF12$gmin_generalized, weaktestHF12$gmin_generalized_critical_value)
+    
+    # Write data for weak instrument test for heteroscedasticity-based instruments in matlab
+    # Only for verification that hetiv function works
     writeMat(con= paste0("./Results/WeakData2Dim_", firstShock, "_", secondShock, ".mat"), myTable = resLP$WeakData)
     writeMat(con= paste0("./Results/WeakData2Dim_HF_", firstShock, "_", secondShock, ".mat"), myTable = resHF$WeakData)
-    
   }
+  
+  # Note that we test for bias in the second coefficient, this is the one we are interested in
+  weaktestLP1  <- gweakivtest(yLP, YLP[, 1], XLP, ZLP[, 1], target = 1, cov_type = cov_type, crit = crit, points = points)
+  weaktestHF1  <- gweakivtest(yHF, YHF[, 1], XHF, ZHF[, 1], target = 1, cov_type = cov_type, crit = crit, points = points)
+  
+  # Save weaktest results
+  ResultsLP1[firstShock, ]  <- c(weaktestLP1$gmin_generalized, weaktestLP1$gmin_generalized_critical_value)
+  ResultsHF1[firstShock, ]  <- c(weaktestHF1$gmin_generalized, weaktestHF1$gmin_generalized_critical_value)
+  
 }
+
+# Export the weak instrument test results
+write.table(rbind(round(ResultsLP2[,,1], 2), NA,
+                  round(ResultsLP2[,,2], 2)), 
+            "./Results/WeakIVTest_HET2DimR.txt", sep = "\t", 
+            row.names = TRUE, quote = FALSE)
+
+write.table(rbind(round(ResultsLP1[,1], 2), NA,
+                  round(ResultsLP1[,2], 2)), 
+            "./Results/WeakIVTest_HET1DimR.txt", sep = "\t", 
+            row.names = TRUE, quote = FALSE)
+
+write.table(rbind(round(ResultsHF12[,1], 2), NA,
+                  round(ResultsHF12[,2], 2)), 
+            "./Results/WeakIVTest_HF12DimR.txt", sep = "\t", 
+            row.names = TRUE, quote = FALSE)
+
+write.table(rbind(round(ResultsHF1[,1], 2), NA,
+                  round(ResultsHF1[,2], 2)), 
+            "./Results/WeakIVTest_HF1DimR.txt", sep = "\t", 
+            row.names = TRUE, quote = FALSE)
+
+write.table(rbind(round(ResultsHF2[,,1], 2), NA,
+                  round(ResultsHF2[,,2], 2)), 
+            "./Results/WeakIVTest_HF2DimR.txt", sep = "\t", 
+            row.names = TRUE, quote = FALSE)
 
 #-------------------------------------------------------------------------------
 # 3) Estimate the baseline model for IRFs
@@ -180,10 +253,10 @@ Z     <- ts_c(ZTG, ZFG)
 
 # Shorten to sample period 
 Dt    <- index(ts_span(y, myStart, myEnd))
-y     <- data.frame(ts_span(y, myStart, myEnd))
-O     <- data.frame(ts_span(O, myStart, myEnd))
-Ind   <- data.frame(ts_span(IndE, myStart, myEnd))
-Z     <- data.frame(ts_span(Z, myStart, myEnd))
+y     <- as.matrix(ts_span(y, myStart, myEnd))
+O     <- as.matrix(ts_span(O, myStart, myEnd))
+Ind   <- as.matrix(ts_span(IndE, myStart, myEnd))
+Z     <- as.matrix(ts_span(Z, myStart, myEnd))
 
 # Estimate the models
 resHET <- hetiv(y =        y, 
@@ -283,15 +356,15 @@ for(e in 1:E){
 
 # Compute shocks and their correlations
 # Extract shocks based on the Kalman filter for heteroscedasticity-based shocks
-HETShocks <- kfpredict(resHET$Sig, resHET$SigR, as.matrix(resHET$Psi), as.matrix(resHET$et), tol = tolInv)
+HETShocks <- kfpredict(resHET$Sig, resHET$SigR, resHET$Psi, resHET$et)
 HETShocks <- xts(HETShocks, order.by = Dt)
 colnames(HETShocks) <- c("Target (HET-IV)", "Path (HET-IV)")
 
-HFShocks <- kfpredict(resHF$Sig, resHF$SigR, as.matrix(resHF$Psi), as.matrix(resHF$et), tol = tolInv)
+HFShocks <- kfpredict(resHF$Sig, resHF$SigR, as.matrix(resHF$Psi), as.matrix(resHF$et))
 HFShocks <- xts(HFShocks, order.by = Dt)
 colnames(HFShocks) <- c("Target (HF-IV)", "Path (HF-IV)")
 
-HFrecShocks <- kfpredict(resHFrec$Sig, resHFrec$SigR, as.matrix(resHFrec$Psi), as.matrix(resHFrec$et), tol = tolInv)
+HFrecShocks <- kfpredict(resHFrec$Sig, resHFrec$SigR, as.matrix(resHFrec$Psi), as.matrix(resHFrec$et))
 HFrecShocks <- xts(HFrecShocks, order.by = Dt)
 colnames(HFrecShocks) <- c("Target (HF-IV rec.)", "Path (HF-IV rec.)")
 
@@ -322,7 +395,7 @@ if(bootstrap == TRUE){
                   E =         E,
                   H =         H,
                   cum =       cum,
-                  details =   TRUE)
+                  details =   FALSE)
   resHF_o <- proxyiv(y =         y, 
                    O =         O,
                    Z =         Z,
@@ -332,7 +405,7 @@ if(bootstrap == TRUE){
                    E =         E,
                    H =         H,
                    cum =       cum,
-                   details =   TRUE)
+                   details =   FALSE)
   
   # Dims: H x N X E
   boot_diffs <- array(NA, dim = c(H, N, E, B))
@@ -354,7 +427,7 @@ if(bootstrap == TRUE){
                       E =         E,
                       H =         H,
                       cum =       cum,
-                      details =   TRUE)
+                      details =   FALSE)
     resHF_b <- proxyiv(y =         y_b, 
                        O =         O_b,
                        Z =         Z_b,
@@ -364,7 +437,7 @@ if(bootstrap == TRUE){
                        E =         E,
                        H =         H,
                        cum =       cum,
-                       details =   TRUE)
+                       details =   FALSE)
     
     boot_diffs[, , , b] <- resHET_b$irf - resHF_b$irf
  
