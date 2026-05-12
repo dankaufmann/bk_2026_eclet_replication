@@ -1,6 +1,0 @@
-
- Spec. 	 1st Beta 	 F-stat 	 Crit. val. 	 
- IR2Yfed 	 0.83 	 127.79 14.80 
- IR3Yfed 	 0.76 	 125.35 15.48 
- IR5Yfed 	 0.72 	 77.44 14.72 
- IRMTfed 	 0.77 	 120.42 16.12 

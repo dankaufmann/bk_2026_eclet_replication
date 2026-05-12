@@ -2,7 +2,7 @@
 % Multiple monetary policy shocks from daily data: A heteroskedasticity IV approach
 % by Marc Burri and Daniel Kaufmann
 %
-% Runs weak-instrument tests (Lewis and Mertens, 2025) for two-dimensional
+% OPTIONAL: Runs weak-instrument tests (Lewis and Mertens, 2025) for two-dimensional
 % monetary policy shocks across all combinations of short- and medium/long-term
 % interest rate specifications.  Tests are conducted for:
 %   (a) HET-IV instruments (heteroskedasticity-based)
@@ -42,7 +42,7 @@ tau  = 0.10;
 points = 1000;
 target1 = 1;
 target2 = 2;
-crit = 'abs';
+crit = 'rel';
 
 %--------------------------------------------------------------------------
 % Section 1: HET-IV weak instrument tests

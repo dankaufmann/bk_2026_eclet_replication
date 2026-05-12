@@ -16,7 +16,7 @@
 #         ./Results/CorrelationShocks2Dim.tex (shock correlation table; Section 3)
 #         ./Results/PVals_HF_HET_Diff_*.pdf (bootstrap p-values; Section 4)
 #
-# Run order: this script first, then 2_MultiDimWeakTests.m (Matlab/Octave)
+# Run order: this script first, then optionally 2_MultiDimWeakTests.m (Matlab/Octave)
 #-------------------------------------------------------------------------------
 
 # In the first instance, install the package iv from github repository
@@ -39,18 +39,24 @@ library("xtable")
 #-------------------------------------------------------------------------------
 # 0) Load daily data
 #-------------------------------------------------------------------------------
-load("./DataRep/Data.RData")
+load("./Data/Data.RData")
 
 #-------------------------------------------------------------------------------
 # 1) Set baseline settings
 #-------------------------------------------------------------------------------
-# Sample settings (FOMC events from Bauer and Swanson, extended with our own event collection)
-myStart <- "1988-02-01"
-myEnd   <- "2022-12-31"
+# Sample settings (FOMC events from Bauer and Swanson, extended with Acosta et al.)
+myStart <- "1988-01-01"
+myEnd   <- "2025-12-31"
+
+# Settings for weak instrument tests
+cov_type <- "NW"
+crit     <- "rel"
+points   <- 1000
 
 # Choose whether do bootstrap tests (takes a while)
-bootstrap <- TRUE
-B <- 2000             # Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
+# Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
+bootstrap <- FALSE
+B         <- 2000             
 
 # Choose whether to export data for Lewis and Mertens (2025) test in Matlab
 exportMat <- FALSE
@@ -84,7 +90,7 @@ varLabs   <- data.frame(IRSTfed = "Short-term rate (in pp)",IRMTfed = "Medium-te
 # - Use a selection of short-term interest rates for first shock
 # - Exports WeakData*.mat files used by 2_MultiDimWeakTests.m
 #-------------------------------------------------------------------------------
-depVar1  <- c("IRLTfed")        # Only needed so that N > 1, also act as dummy control vars
+depVar1  <- c("IRLTfed")        # Only needed so that N > 1. Test for bias on impact on LT rate
 N        <- 3                   # Number of dependent variables (only for weak instrument tests)
 
 firstShocks  <- c("FFR", "IR3Mfed", "IR6Mfed", "IRSTfed")
@@ -101,11 +107,6 @@ ResultsHF1  <- ResultsHF2[, 1, ]
 ResultsLP1  <- ResultsLP2[, 1, ]
 ResultsHF12 <- ResultsHF2[1, , ]
 
-# Settings
-cov_type = "NW"
-crit     = "abs"
-points   = 1000
-
 # First shock try short-term interest rates
 for(firstShock in firstShocks){
   
@@ -120,6 +121,7 @@ for(firstShock in firstShocks){
     
     y       <- Data[, irfVars]
     O       <- Data[, infoVars]
+    IndE    <- Data[, "IndE"]
     
     ZTG   <- Data[, "SFFR"]
     ZFG   <- Data[, "SFG"]
@@ -250,6 +252,7 @@ N        <- length(irfVars)
 # - O contains the information set, included with 1..P lags
 y     <- Data[, irfVars]
 O     <- Data[, infoVars]
+IndE  <- Data[, "IndE"]
 
 ZTG   <- Data[, "SFFR"]
 ZFG   <- Data[, "SFG"]
