@@ -120,10 +120,9 @@ NASDAQ100 <- xts(NASDAQ100$value, NASDAQ100$date)
 SP500     <- xts(SP500, index(SP500))
 
 # Create weighted average
-Stocks <- (0.5*ts_index(SP500, "2000-12-01") + 
-           0.25*ts_index(NASDAQ, "2000-12-01") + 
-           0.25*ts_index(NASDAQ100, "2000-12-01"))
-
+ Stocks <- (0.5*ts_index(SP500, "2000-12-01") + 
+            0.25*ts_index(NASDAQ, "2000-12-01") + 
+            0.25*ts_index(NASDAQ100, "2000-12-01"))
 
 # Corporate bond spread data
 SpreadBAA <- fredr("BAA10Y")

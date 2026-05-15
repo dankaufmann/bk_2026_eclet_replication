@@ -55,7 +55,7 @@ points   <- 1000
 
 # Choose whether do bootstrap tests (takes a while)
 # Number of bootstrap iterations (set to 500 for test purposes, use 2000 for final results)
-bootstrap <- FALSE
+bootstrap <- TRUE
 B         <- 2000             
 
 # Choose whether to export data for Lewis and Mertens (2025) test in Matlab
@@ -232,6 +232,7 @@ write.table(rbind(round(ResultsHF2[,,1], 2), NA,
             "./Results/WeakIVTest_HF2Dim.txt", sep = "\t", 
             row.names = TRUE, quote = FALSE)
 
+
 #-------------------------------------------------------------------------------
 # 3) Estimate the baseline model for IRFs
 # - Baseline: short-term (IRSTfed) and medium-term (IRMTfed) rate as normalization vars
@@ -394,7 +395,7 @@ set.seed(42)
 # Bootstrap equality of impulse responses
 if(bootstrap == TRUE){
   
-  # Reestimate baseline
+  # Estimate baseline
   resHET_o <- hetiv(y =        y, 
                   O =         O, 
                   Ind =       Ind, 
