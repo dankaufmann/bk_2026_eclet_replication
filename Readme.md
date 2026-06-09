@@ -1,10 +1,10 @@
 # Multiple monetary policy shocks from daily data: A heteroskedasticity IV approach
 
-Replication files — Version 28 May 2026
+Replication files — Version 9 June 2026
 
 Marc Burri and Daniel Kaufmann  
-University of Neuchâtel, Institute of Economic Research  
-*Economics Letters*, resubmission
+University of Neuchâtel, Institute of Economic Research and KOF Swiss Economic Institute, ETH Zurich
+*Economics Letters*, *forthcoming*
 
 ---
 
