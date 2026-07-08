@@ -1,16 +1,16 @@
 # Multiple monetary policy shocks from daily data: A heteroskedasticity IV approach
 
-Replication files — Version 9 June 2026
+Replication files — Version 8 July 2026
 
 Marc Burri and Daniel Kaufmann  
 University of Neuchâtel, Institute of Economic Research and KOF Swiss Economic Institute, ETH Zurich
-*Economics Letters*, *forthcoming*
+*Economics Letters*, 268, 1-7, https://doi.org/10.1016/j.econlet.2026.113091
 
 ---
 
 ## Overview
 
-This replication package reproduces all figures and tables in Burri and Kaufmann (2026). The paper proposes a heteroskedasticity-based instrumental variables (HET-IV) estimator that identifies two-dimensional monetary policy shocks — a target shock and a path shock — from daily financial market data, without requiring intraday tick data or precise announcement timestamps.
+This replication package reproduces all figures and tables in Burri and Kaufmann (2026a). The paper proposes a heteroskedasticity-based instrumental variables (HET-IV) estimator that identifies two-dimensional monetary policy shocks — a target shock and a path shock — from daily financial market data, without requiring intraday tick data or precise announcement timestamps.
 
 All estimation routies are provided in the R package `hetiv`, which can be downloaded from: https://github.com/dankaufmann/hetiv. Full documentation of the package and an example application is available on: https://dankaufmann.github.io/hetiv/.
 
@@ -39,7 +39,7 @@ The replication code is split across two scripts that must be run in order:
 
 ## Data description
 
-All data follow Burri and Kaufmann (2026, IRENE Working Paper 24-03). The sample covers 1988-01-04 to 2025-12-31.
+All data follow Burri and Kaufmann (2026b). The sample covers 1988-01-04 to 2025-12-31.
 
 ### Financial market variables
 
@@ -148,7 +148,8 @@ OPTIONAL: Run `0_GetData.R` to create the data set from scratch. Use the `export
 
 - Bauer, M.D. and Chernov, M. (2024). Interest rate skewness and biased beliefs. *Journal of Finance*, 79(1):173–217.
 - Bauer, M.D. and Swanson, E.T. (2022). A reassessment of monetary policy surprises and high-frequency identification. In *NBER Macroeconomics Annual 2022*, volume 37.
-- Burri, M. and Kaufmann, D. (2026). Measuring monetary policy shocks. IRENE Working Paper 24-03, University of Neuchâtel, https://ideas.repec.org/p/irn/wpaper/24-03.html.
+- Burri, M. and Kaufmann, D. (2026a). Multiple monetary policy shocks from daily data: A heteroskedasticity IV approach, 268, 1-7, https://doi.org/10.1016/j.econlet.2026.113091
+- Burri, M. and Kaufmann, D. (2026b). Measuring monetary policy shocks. IRENE Working Paper 24-03, University of Neuchâtel, https://ideas.repec.org/p/irn/wpaper/24-03.html.
 - Lewis, D.J. and Mertens, K. (2025). A robust test for weak instruments with multiple endogenous regressors. *Review of Economic Studies*.
 - Rigobon, R. and Sack, B. (2004). The impact of monetary policy on asset prices. *Journal of Monetary Economics*, 51(8):1553–1575.
 - Swanson, E.T. (2021). Measuring the effects of Federal Reserve forward guidance and asset purchases on financial markets. *Journal of Monetary Economics*, 118:32–53.
