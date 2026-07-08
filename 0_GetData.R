@@ -12,10 +12,8 @@
 #-------------------------------------------------------------------------------
 
 # In the first instance, install the package iv from github repository
-# install.packages("devtools")
-# library(devtools)
-# remove.packages("hetiv")
-# install("C:\\Users\\daenu\\GitHub\\hetiv")
+# install.packages("remotes")
+# remotes::install_github("dankaufmann/hetiv")
 
 # Load user-defined commands and packages
 library("hetiv")
