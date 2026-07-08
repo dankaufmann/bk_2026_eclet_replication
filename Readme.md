@@ -3,7 +3,9 @@
 Replication files — Version 8 July 2026
 
 Marc Burri and Daniel Kaufmann  
+
 University of Neuchâtel, Institute of Economic Research and KOF Swiss Economic Institute, ETH Zurich
+
 *Economics Letters*, 268, 1-7, https://doi.org/10.1016/j.econlet.2026.113091
 
 ---
